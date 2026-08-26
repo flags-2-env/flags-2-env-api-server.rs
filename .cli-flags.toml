@@ -1,0 +1,17 @@
+# flags-2-env surface for `flags2env-platform-api`
+[flags.config]
+env = "FLAGS_2_ENV_CONFIG"
+long = "config"
+help = "Path to TOML configuration"
+
+[flags.api_base]
+env = "FLAGS_2_ENV_API_BASE"
+long = "api-base"
+help = "API HTTP base URL"
+
+[flags.json]
+env = "FLAGS_2_ENV_JSON"
+long = "json"
+switch = true
+help = "Emit JSON"
+

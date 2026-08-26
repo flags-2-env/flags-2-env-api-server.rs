@@ -1,0 +1,4 @@
+name = "flags-2-env-api-server.rs"
+kind = "api-server"
+version = "0.1.0"
+
