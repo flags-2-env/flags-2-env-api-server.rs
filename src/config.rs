@@ -9,11 +9,13 @@ pub struct ApiConfig {
 
 impl ApiConfig {
     pub fn from_env() -> Self {
+        let env = crate::env::load().unwrap_or_else(|err| panic!("{err}"));
         Self {
-            bind: std::env::var("FLAGS_2_ENV_API_BIND").unwrap_or_else(|_| "127.0.0.1:8080".into()),
-            tcp_bind: std::env::var("FLAGS_2_ENV_API_TCP_BIND").ok(),
-            nats_url: std::env::var("FLAGS_2_ENV_NATS_URL").ok(),
+            bind: crate::env::get(&env, crate::env::BIND)
+                .unwrap_or("127.0.0.1:8080")
+                .to_owned(),
+            tcp_bind: crate::env::get(&env, crate::env::TCP_BIND).map(str::to_owned),
+            nats_url: crate::env::get(&env, crate::env::NATS_URL).map(str::to_owned),
         }
     }
 }
-
