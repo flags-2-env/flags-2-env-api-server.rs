@@ -1,17 +1,26 @@
 # flags-2-env surface for `flags2env-platform-api`
-[flags.config]
-env = "FLAGS_2_ENV_CONFIG"
-long = "config"
-help = "Path to TOML configuration"
+[identity]
+service = "flags-2-env-api-server"
+type_name = "ApiEnv"
 
-[flags.api_base]
-env = "FLAGS_2_ENV_API_BASE"
-long = "api-base"
-help = "API HTTP base URL"
+[env]
+load = false
 
-[flags.json]
-env = "FLAGS_2_ENV_JSON"
-long = "json"
-switch = true
-help = "Emit JSON"
+[flags.bind]
+env = "FLAGS_2_ENV_API_BIND"
+type = "string"
+default = "127.0.0.1:8080"
+examples = ["127.0.0.1:8080", "0.0.0.0:8080"]
+help = "HTTP listen address."
 
+[flags.tcp-bind]
+env = "FLAGS_2_ENV_API_TCP_BIND"
+type = "string"
+examples = ["127.0.0.1:8443"]
+help = "Optional mTLS TCP bind (stateful avenue)."
+
+[flags.nats-url]
+env = "FLAGS_2_ENV_NATS_URL"
+type = "string"
+examples = ["nats://127.0.0.1:4222"]
+help = "Optional NATS URL (async avenue)."

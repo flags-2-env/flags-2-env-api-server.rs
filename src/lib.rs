@@ -2,6 +2,7 @@
 
 pub mod auth;
 pub mod config;
+pub mod env;
 pub mod error;
 pub mod routes;
 pub mod server;
