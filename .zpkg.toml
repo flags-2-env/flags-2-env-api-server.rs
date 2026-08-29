@@ -2,3 +2,6 @@ name = "flags-2-env-api-server.rs"
 kind = "api-server"
 version = "0.1.0"
 
+[dependencies]
+"flags-2-env/flags-2-env-lib-core" = "^0.1.0"
+"flags-2-env/flags-2-env-orm-core" = "^0.1.0"
