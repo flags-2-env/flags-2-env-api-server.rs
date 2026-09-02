@@ -1,0 +1,53 @@
+name: CI bootstrap
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ci-bootstrap-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-and-normalize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out pull-request branch
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.head_ref }}
+          persist-credentials: true
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.90.0 --profile minimal --component rustfmt,clippy
+
+      - name: Generate lockfile and canonical formatting
+        run: |
+          cargo +1.90.0 generate-lockfile
+          cargo +1.90.0 fmt --all
+
+      - name: Check all targets and features
+        run: cargo +1.90.0 check --all-targets --all-features --locked
+
+      - name: Run strict Clippy
+        run: cargo +1.90.0 clippy --all-targets --all-features --locked -- -D warnings
+
+      - name: Run tests
+        run: cargo +1.90.0 test --all-targets --all-features --locked
+
+      - name: Build runtime image
+        run: docker build --tag flags-2-env-api-server:ci .
+
+      - name: Commit verified generated files
+        run: |
+          git add Cargo.lock src/main.rs src/server.rs src/lifecycle.rs Cargo.toml
+          git diff --cached --check
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "build: record verified API runtime resolution"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
