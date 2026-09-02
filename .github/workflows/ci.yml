@@ -49,7 +49,7 @@ jobs:
               raise SystemExit('dotenv helper is not in a recognized form')
           PY
 
-      - name: Generate lockfile and canonical formatting
+      - name: Resolve dependencies and apply canonical formatting
         run: |
           cargo +1.90.0 generate-lockfile
           cargo +1.90.0 fmt --all
@@ -66,12 +66,12 @@ jobs:
       - name: Build runtime image
         run: docker build --tag flags-2-env-api-server:ci .
 
-      - name: Commit verified generated files
+      - name: Commit verified source normalization
         run: |
-          git add Cargo.lock Cargo.toml src/main.rs src/server.rs src/lifecycle.rs src/env/mod.rs src/env/generated.rs
+          git add Cargo.toml src/main.rs src/server.rs src/lifecycle.rs src/env/mod.rs src/env/generated.rs
           git diff --cached --check
           if git diff --cached --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "build: record verified API runtime resolution"
+          git commit -m "build: record verified API runtime normalization"
           git push origin "HEAD:${GITHUB_HEAD_REF}"
