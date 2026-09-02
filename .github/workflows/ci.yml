@@ -25,6 +25,30 @@ jobs:
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.90.0 --profile minimal --component rustfmt,clippy
 
+      - name: Normalize generated env helper
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/env/generated.rs')
+          text = path.read_text()
+          old = '''fn dotenv_enabled() -> bool {
+              match std::env::var("FLAGS2ENV_DOTENV") {
+                  Ok(value) if matches!(value.trim(), "0" | "false" | "FALSE" | "no" | "NO") => false,
+                  _ => true,
+              }
+          }'''
+          new = '''fn dotenv_enabled() -> bool {
+              !matches!(
+                  std::env::var("FLAGS2ENV_DOTENV"),
+                  Ok(value) if matches!(value.trim(), "0" | "false" | "FALSE" | "no" | "NO")
+              )
+          }'''
+          if old in text:
+              path.write_text(text.replace(old, new, 1))
+          elif new not in text:
+              raise SystemExit('dotenv helper is not in a recognized form')
+          PY
+
       - name: Generate lockfile and canonical formatting
         run: |
           cargo +1.90.0 generate-lockfile
@@ -44,7 +68,7 @@ jobs:
 
       - name: Commit verified generated files
         run: |
-          git add Cargo.lock src/main.rs src/server.rs src/lifecycle.rs Cargo.toml
+          git add Cargo.lock Cargo.toml src/main.rs src/server.rs src/lifecycle.rs src/env/mod.rs src/env/generated.rs
           git diff --cached --check
           if git diff --cached --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
