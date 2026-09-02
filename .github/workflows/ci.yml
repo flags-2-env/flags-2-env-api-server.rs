@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out exact pull-request head
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.90.0 --profile minimal --component rustfmt,clippy
+
+      - name: Resolve the repository's intentionally untracked lockfile
+        run: cargo +1.90.0 generate-lockfile
+
+      - name: Check canonical formatting
+        run: cargo +1.90.0 fmt --all -- --check
+
+      - name: Check all targets and features
+        run: cargo +1.90.0 check --all-targets --all-features --locked
+
+      - name: Run strict Clippy
+        run: cargo +1.90.0 clippy --all-targets --all-features --locked -- -D warnings
+
+      - name: Run tests
+        run: cargo +1.90.0 test --all-targets --all-features --locked
+
+      - name: Build runtime image
+        run: docker build --tag flags-2-env-api-server:ci .

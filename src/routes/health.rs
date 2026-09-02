@@ -9,6 +9,8 @@ pub struct HealthBody {
 }
 
 pub fn body() -> HealthBody {
-    HealthBody { ok: true, service: "flags-2-env-api-server" }
+    HealthBody {
+        ok: true,
+        service: "flags-2-env-api-server",
+    }
 }
-
