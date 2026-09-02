@@ -1,58 +1,34 @@
-name: CI bootstrap
+name: CI
 
 on:
   pull_request:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: ci-bootstrap-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  validate-and-normalize:
+  validate:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - name: Check out pull-request branch
+      - name: Check out exact pull-request head
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
-          ref: ${{ github.head_ref }}
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.90.0 --profile minimal --component rustfmt,clippy
 
-      - name: Normalize generated env helper
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('src/env/generated.rs')
-          text = path.read_text()
-          old = '''fn dotenv_enabled() -> bool {
-              match std::env::var("FLAGS2ENV_DOTENV") {
-                  Ok(value) if matches!(value.trim(), "0" | "false" | "FALSE" | "no" | "NO") => false,
-                  _ => true,
-              }
-          }'''
-          new = '''fn dotenv_enabled() -> bool {
-              !matches!(
-                  std::env::var("FLAGS2ENV_DOTENV"),
-                  Ok(value) if matches!(value.trim(), "0" | "false" | "FALSE" | "no" | "NO")
-              )
-          }'''
-          if old in text:
-              path.write_text(text.replace(old, new, 1))
-          elif new not in text:
-              raise SystemExit('dotenv helper is not in a recognized form')
-          PY
+      - name: Resolve the repository's intentionally untracked lockfile
+        run: cargo +1.90.0 generate-lockfile
 
-      - name: Resolve dependencies and apply canonical formatting
-        run: |
-          cargo +1.90.0 generate-lockfile
-          cargo +1.90.0 fmt --all
+      - name: Check canonical formatting
+        run: cargo +1.90.0 fmt --all -- --check
 
       - name: Check all targets and features
         run: cargo +1.90.0 check --all-targets --all-features --locked
@@ -65,13 +41,3 @@ jobs:
 
       - name: Build runtime image
         run: docker build --tag flags-2-env-api-server:ci .
-
-      - name: Commit verified source normalization
-        run: |
-          git add Cargo.toml src/main.rs src/server.rs src/lifecycle.rs src/env/mod.rs src/env/generated.rs
-          git diff --cached --check
-          if git diff --cached --quiet; then exit 0; fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "build: record verified API runtime normalization"
-          git push origin "HEAD:${GITHUB_HEAD_REF}"
