@@ -1,21 +1,16 @@
 #![forbid(unsafe_code)]
 
-use std::{
-    error::Error,
-    future::IntoFuture,
-    net::SocketAddr,
-    time::Duration,
-};
+use std::{error::Error, future::IntoFuture, net::SocketAddr, time::Duration};
 
 use axum::{
-    Json, Router,
     extract::State,
     http::{
-        HeaderValue, StatusCode,
         header::{CACHE_CONTROL, CONTENT_TYPE},
+        HeaderValue, StatusCode,
     },
     response::{IntoResponse, Response},
     routing::get,
+    Json, Router,
 };
 use serde::Serialize;
 use tokio::{
@@ -268,11 +263,11 @@ async fn shutdown_signal() {
 
 #[cfg(test)]
 mod tests {
-    use super::{AppState, Response, router};
+    use super::{router, AppState, Response};
     use crate::lifecycle::LifecycleState;
     use axum::{
         body::Body,
-        http::{Request, StatusCode, header::CACHE_CONTROL},
+        http::{header::CACHE_CONTROL, Request, StatusCode},
     };
     use tower::ServiceExt;
 
@@ -294,7 +289,10 @@ mod tests {
         let state = AppState {
             lifecycle: lifecycle.clone(),
         };
-        assert_eq!(response(state.clone(), "/healthz").await.status(), StatusCode::OK);
+        assert_eq!(
+            response(state.clone(), "/healthz").await.status(),
+            StatusCode::OK
+        );
         assert_eq!(
             response(state.clone(), "/readyz").await.status(),
             StatusCode::SERVICE_UNAVAILABLE
@@ -304,8 +302,14 @@ mod tests {
             StatusCode::SERVICE_UNAVAILABLE
         );
         lifecycle.mark_started();
-        assert_eq!(response(state.clone(), "/readyz").await.status(), StatusCode::OK);
-        assert_eq!(response(state.clone(), "/startupz").await.status(), StatusCode::OK);
+        assert_eq!(
+            response(state.clone(), "/readyz").await.status(),
+            StatusCode::OK
+        );
+        assert_eq!(
+            response(state.clone(), "/startupz").await.status(),
+            StatusCode::OK
+        );
         lifecycle.begin_drain();
         assert_eq!(
             response(state, "/readyz").await.status(),
@@ -319,7 +323,10 @@ mod tests {
             lifecycle: LifecycleState::new("test"),
         };
         let response = response(state, "/healthz").await;
-        assert_eq!(response.headers().get(CACHE_CONTROL), Some(&"no-store".parse().unwrap()));
+        assert_eq!(
+            response.headers().get(CACHE_CONTROL),
+            Some(&"no-store".parse().unwrap())
+        );
     }
 
     #[tokio::test]
@@ -327,6 +334,9 @@ mod tests {
         let state = AppState {
             lifecycle: LifecycleState::new("test"),
         };
-        assert_eq!(response(state, "/v1/catalog").await.status(), StatusCode::OK);
+        assert_eq!(
+            response(state, "/v1/catalog").await.status(),
+            StatusCode::OK
+        );
     }
 }
