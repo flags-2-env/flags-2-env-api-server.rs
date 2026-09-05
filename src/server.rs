@@ -79,14 +79,20 @@ pub async fn run(config: &ApiConfig) -> Result<(), BoxError> {
 
     let (drain_started_tx, drain_started_rx) = oneshot::channel();
     let shutdown_lifecycle = lifecycle.clone();
-    let server = axum::serve(listener, router(state))
-        .with_graceful_shutdown(async move {
-            shutdown_signal().await;
-            shutdown_lifecycle.begin_drain();
-            sleep(READINESS_PROPAGATION_DELAY).await;
-            let _ = drain_started_tx.send(());
-        })
-        .into_future();
+    let server = axum::serve(
+        listener,
+        ores_middleware::frameworks::axum_audit::install_from_env(
+            router(state),
+            env!("CARGO_PKG_NAME"),
+        )?,
+    )
+    .with_graceful_shutdown(async move {
+        shutdown_signal().await;
+        shutdown_lifecycle.begin_drain();
+        sleep(READINESS_PROPAGATION_DELAY).await;
+        let _ = drain_started_tx.send(());
+    })
+    .into_future();
     tokio::pin!(server);
 
     let result = tokio::select! {
