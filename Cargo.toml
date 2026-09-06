@@ -12,6 +12,7 @@ tcp-transport = []
 nats-transport = []
 
 [dependencies]
+ores-middleware = { git = "https://github.com/ORESoftware/ores-middleware", rev = "6f73bf1ae97f38f05e2e87e4eb3e0e18e0142529", features = ["axum"] }
 axum = "0.8.4"
 flags2env = { version = "0.1.0", git = "https://github.com/flags-2-env/flags-2-env", rev = "d7bad9ea7dfc657653368237e08903514cdca1ec" }
 serde = { version = "1", features = ["derive"] }
