@@ -1,4 +1,4 @@
-# GENERATED from Dockerfile (sha256:24de3e92be9749b5) by ores-gha-workflows/scripts/render-dkf.mjs — target linux/amd64. Do not edit; edit Dockerfile and re-render.
+# GENERATED from Dockerfile (sha256:39edef2318776f2e) by ores-gha-workflows/scripts/render-dkf.mjs — target linux/amd64. Do not edit; edit Dockerfile and re-render.
 # syntax=docker/dockerfile:1.7
 #
 # flags-2-env-api-server — production container image.
@@ -57,7 +57,17 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,id=cargo-registry,sharin
 ########################################
 FROM chef AS planner
 COPY . .
-RUN cargo chef prepare --recipe-path recipe.json
+RUN --mount=type=secret,id=gh_token \
+    set -eu; \
+    if [ -s /run/secrets/gh_token ]; then \
+      t="$(cat /run/secrets/gh_token)"; \
+      export GIT_CONFIG_COUNT=2; \
+      export GIT_CONFIG_KEY_0="url.https://x-access-token:${t}@github.com/.insteadOf"; \
+      export GIT_CONFIG_VALUE_0="https://github.com/"; \
+      export GIT_CONFIG_KEY_1="url.https://x-access-token:${t}@github.com/.insteadOf"; \
+      export GIT_CONFIG_VALUE_1="ssh://git@github.com/"; \
+    fi; \
+    cargo chef prepare --recipe-path recipe.json
 
 ########################################
 # Stage 2 — build

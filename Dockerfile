@@ -55,7 +55,17 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,id=cargo-registry,sharin
 ########################################
 FROM chef AS planner
 COPY . .
-RUN cargo chef prepare --recipe-path recipe.json
+RUN --mount=type=secret,id=gh_token \
+    set -eu; \
+    if [ -s /run/secrets/gh_token ]; then \
+      t="$(cat /run/secrets/gh_token)"; \
+      export GIT_CONFIG_COUNT=2; \
+      export GIT_CONFIG_KEY_0="url.https://x-access-token:${t}@github.com/.insteadOf"; \
+      export GIT_CONFIG_VALUE_0="https://github.com/"; \
+      export GIT_CONFIG_KEY_1="url.https://x-access-token:${t}@github.com/.insteadOf"; \
+      export GIT_CONFIG_VALUE_1="ssh://git@github.com/"; \
+    fi; \
+    cargo chef prepare --recipe-path recipe.json
 
 ########################################
 # Stage 2 — build
