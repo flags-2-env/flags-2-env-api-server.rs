@@ -17,7 +17,7 @@ ores-transport = { git = "https://github.com/ORESoftware/ores-transport.git", re
 flags-2-env-lib-core = { git = "https://github.com/flags-2-env/flags-2-env-lib-core.git", rev = "4ec2ce8db44eb630f3d617aecdcf7b9922a64a94", features = ["read-write"] }
 k8s-web-api-data-plane = { git = "https://github.com/ORESoftware/k8s-libs-and-shared-defs.git", rev = "55adadc9f6d223d40b28ae66097dfe16930951b1", package = "k8s-web-api-data-plane" }
 axum = "0.8.4"
-flags2env = { version = "0.1.0", git = "https://github.com/flags-2-env/flags-2-env", rev = "d7bad9ea7dfc657653368237e08903514cdca1ec" }
+flags2env = { version = "0.1.0", git = "https://github.com/flags-2-env/flags-2-env", rev = "a67c7f106fe0c109750644e4951b8c4b4c92cf53" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tempfile = "3"
