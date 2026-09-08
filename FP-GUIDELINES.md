@@ -36,10 +36,11 @@ identically on a laptop and on a CI runner.
 
 ## The budget, and why CI is not red today
 
-`tools/fp-conformance/budget.json` records the per-rule counts at the moment this
-check was introduced: **7 findings across 17 files
-and 404 lines**. CI compares against that budget and fails only when a
-rule's count *increases*. The existing backlog blocks nobody; new violations do.
+`tools/fp-conformance/budget.json` records the per-rule counts for the first
+fully integrated `main`: **21 findings across 21 Rust files and 1,174 lines**.
+That baseline includes the recovered lifecycle and four-transport modules. CI
+compares against the budget and fails only when a rule's count *increases*. The
+inherited backlog blocks nobody; new violations do.
 
 The budget is a ratchet. It should only ever move down. When you clear a class of
 violation, re-baseline in the same commit as the fix:
@@ -55,23 +56,31 @@ Raising the budget to turn CI green defeats the whole mechanism. Fix the code.
 
 | rule | count | severity | principle | what it flags |
 |---|---:|---|---|---|
-| `RS001` | 3 | warn | immutable values | mutable local binding (`let mut`) |
-| `RS003` | 2 | error | typed errors | panic-based control flow (`unwrap`/`expect`/`panic!`) |
+| `RS001` | 9 | warn | immutable values | mutable local binding (`let mut`) |
+| `RS003` | 6 | error | typed errors | panic-based control flow (`unwrap`/`expect`/`panic!`) |
+| `RS005` | 4 | warn | typed errors | untyped/erased error in a signature |
 | `RS004` | 2 | warn | illegal states excluded by types | wildcard match arm defeats exhaustiveness |
 
 ## How to clear the top offenders
 
 ### `RS001` — mutable local binding (`let mut`)
 
-*immutable values* · 3 occurrences at baseline
+*immutable values* · 9 occurrences at baseline
 
 Rebind with `let`, fold with an iterator, or build the value with `collect()`/`fold()` instead of mutating in place.
 
 ### `RS003` — panic-based control flow (`unwrap`/`expect`/`panic!`)
 
-*typed errors* · 2 occurrences at baseline
+*typed errors* · 6 occurrences at baseline
 
 Return `Result<T, E>` with a domain error enum and propagate with `?`; reserve panics for genuinely unreachable invariants proven by types.
+
+### `RS005` — untyped/erased error in a signature
+
+*typed errors* · 4 occurrences at baseline
+
+Use a repository error enum so callers can exhaustively handle the service's
+known failure modes without string inspection or downcasting.
 
 ### `RS004` — wildcard match arm defeats exhaustiveness
 
