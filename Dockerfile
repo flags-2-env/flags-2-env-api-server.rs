@@ -81,7 +81,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,id=cargo-registry,sharin
       export GIT_CONFIG_KEY_1="url.https://x-access-token:${t}@github.com/.insteadOf"; \
       export GIT_CONFIG_VALUE_1="ssh://git@github.com/"; \
     fi; \
-    cargo chef cook --release --locked --recipe-path recipe.json
+    cargo chef cook --release --recipe-path recipe.json
 
 # (2) Bring in the real source and compile just this crate against the cooked
 #     dependency artifacts already in /app/target.
@@ -98,7 +98,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,id=cargo-registry,sharin
       export GIT_CONFIG_KEY_1="url.https://x-access-token:${t}@github.com/.insteadOf"; \
       export GIT_CONFIG_VALUE_1="ssh://git@github.com/"; \
     fi; \
-    cargo build --release --locked --bin flags-2-env-api-server; \
+    cargo build --release --bin flags-2-env-api-server; \
     strip target/release/flags-2-env-api-server; \
     cp target/release/flags-2-env-api-server /usr/local/bin/flags-2-env-api-server
 
