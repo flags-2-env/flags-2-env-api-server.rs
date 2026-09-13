@@ -7,6 +7,7 @@ pub mod error;
 pub mod flags;
 pub mod four_transports;
 pub mod lifecycle;
+pub mod observability;
 pub mod routes;
 pub mod server;
 pub mod state;
