@@ -12,6 +12,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
+use next_loggers::{json, Logger};
 use serde::Serialize;
 use tokio::{
     net::TcpListener,
@@ -67,38 +68,85 @@ fn router(state: AppState) -> Router {
         .with_state(state)
 }
 
-pub async fn run(config: &ApiConfig) -> Result<(), BoxError> {
-    let address: SocketAddr = config.bind.parse()?;
-    let listener = TcpListener::bind(address).await?;
+pub async fn run(config: &ApiConfig, logger: &Logger) -> Result<(), BoxError> {
+    const ROUTINE_ID: &str = "ores-routine-YJpeIzXOSzjKcaxWiVs3p";
+    // Bind addresses and other configuration values are never recorded.
+    let address = match config.bind.parse::<SocketAddr>() {
+        Ok(address) => address,
+        Err(error) => {
+            let _ = logger
+                .error(vec![json!("API bind address is invalid")])
+                .add_trace("ores-trace-GqXMMRSXYYPpCf9JTbRBZ", false)
+                .add_routine_id(ROUTINE_ID)
+                .send();
+            return Err(error.into());
+        }
+    };
+    let listener = match TcpListener::bind(address).await {
+        Ok(listener) => listener,
+        Err(error) => {
+            let _ = logger
+                .error(vec![json!("API listener bind failed")])
+                .add_trace("ores-trace-wMAKrrAZqoE9jzG_8Qp5B", false)
+                .add_routine_id(ROUTINE_ID)
+                .send();
+            return Err(error.into());
+        }
+    };
     let lifecycle = LifecycleState::from_environment();
     let state = AppState {
         lifecycle: lifecycle.clone(),
     };
     lifecycle.mark_started();
     tracing::info!(service = SERVICE_NAME, %address, "API listener ready");
+    let _ = logger
+        .info(vec![json!("API listener ready")])
+        .add_trace("ores-trace-JWKlCySFMO7dsaacLLxJh", false)
+        .add_routine_id(ROUTINE_ID)
+        .send();
+
+    let app = match ores_middleware::frameworks::axum_audit::install_from_env(
+        router(state),
+        env!("CARGO_PKG_NAME"),
+    ) {
+        Ok(app) => app,
+        Err(error) => {
+            let _ = logger
+                .error(vec![json!("API audit middleware installation failed")])
+                .add_trace("ores-trace-FciJqyrWXwKJvjTz1nx38", false)
+                .add_routine_id(ROUTINE_ID)
+                .send();
+            return Err(error.into());
+        }
+    };
 
     let (drain_started_tx, drain_started_rx) = oneshot::channel();
     let shutdown_lifecycle = lifecycle.clone();
-    let server = axum::serve(
-        listener,
-        ores_middleware::frameworks::axum_audit::install_from_env(
-            router(state),
-            env!("CARGO_PKG_NAME"),
-        )?,
-    )
-    .with_graceful_shutdown(async move {
-        shutdown_signal().await;
-        shutdown_lifecycle.begin_drain();
-        sleep(READINESS_PROPAGATION_DELAY).await;
-        let _ = drain_started_tx.send(());
-    })
-    .into_future();
+    let shutdown_logger = logger.clone();
+    let server = axum::serve(listener, app)
+        .with_graceful_shutdown(async move {
+            shutdown_signal(&shutdown_logger).await;
+            shutdown_lifecycle.begin_drain();
+            let _ = shutdown_logger
+                .info(vec![json!("API graceful drain started")])
+                .add_trace("ores-trace-BFdDfjyGxkwBwUNrUxoLQ", false)
+                .add_routine_id(ROUTINE_ID)
+                .send();
+            sleep(READINESS_PROPAGATION_DELAY).await;
+            let _ = drain_started_tx.send(());
+        })
+        .into_future();
     tokio::pin!(server);
 
     let result = tokio::select! {
         result = &mut server => result,
         started = drain_started_rx => {
             if started.is_err() {
+                let _ = logger
+                    .error(vec![json!("API shutdown coordinator stopped before drain began")])
+                    .add_trace("ores-trace-aOmrB5XwX4l6R1dcySNoo", false)
+                    .add_routine_id(ROUTINE_ID)
+                    .send();
                 Err(std::io::Error::new(
                     std::io::ErrorKind::BrokenPipe,
                     "shutdown coordinator stopped before drain began",
@@ -106,15 +154,34 @@ pub async fn run(config: &ApiConfig) -> Result<(), BoxError> {
             } else {
                 match timeout(DRAIN_TIMEOUT, &mut server).await {
                     Ok(result) => result,
-                    Err(_) => Err(std::io::Error::new(
-                        std::io::ErrorKind::TimedOut,
-                        format!("graceful shutdown exceeded {} seconds", DRAIN_TIMEOUT.as_secs()),
-                    )),
+                    Err(_) => {
+                        let _ = logger
+                            .error(vec![json!("API graceful shutdown exceeded the drain timeout")])
+                            .add_trace("ores-trace-kT-o7VZYe97ln4JNrScQp", false)
+                            .add_routine_id(ROUTINE_ID)
+                            .send();
+                        Err(std::io::Error::new(
+                            std::io::ErrorKind::TimedOut,
+                            format!("graceful shutdown exceeded {} seconds", DRAIN_TIMEOUT.as_secs()),
+                        ))
+                    }
                 }
             }
         }
     };
-    result?;
+    if let Err(error) = result {
+        let _ = logger
+            .error(vec![json!("API server stopped with an I/O error")])
+            .add_trace("ores-trace-KeZUdPyd91jiSs0l89Re1", false)
+            .add_routine_id(ROUTINE_ID)
+            .send();
+        return Err(error.into());
+    }
+    let _ = logger
+        .info(vec![json!("API server stopped")])
+        .add_trace("ores-trace-oWB8XmzVPaM-8KTrzCkKE", false)
+        .add_routine_id(ROUTINE_ID)
+        .send();
     Ok(())
 }
 
@@ -248,7 +315,8 @@ fn probe_response(
     response
 }
 
-async fn shutdown_signal() {
+async fn shutdown_signal(logger: &Logger) {
+    const ROUTINE_ID: &str = "ores-routine-uw6dCTQijrv2lCHdDrdUR";
     #[cfg(unix)]
     {
         match signal::unix::signal(signal::unix::SignalKind::terminate()) {
@@ -257,12 +325,18 @@ async fn shutdown_signal() {
             }
             Err(error) => {
                 tracing::error!(%error, "failed to install SIGTERM handler");
+                let _ = logger
+                    .error(vec![json!("API SIGTERM handler installation failed")])
+                    .add_trace("ores-trace-hTUFZmOiHcJ1aSo7P_BXS", false)
+                    .add_routine_id(ROUTINE_ID)
+                    .send();
                 let _ = signal::ctrl_c().await;
             }
         }
     }
     #[cfg(not(unix))]
     {
+        let _ = (logger, ROUTINE_ID);
         let _ = signal::ctrl_c().await;
     }
 }
